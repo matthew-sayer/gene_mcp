@@ -48,34 +48,38 @@ async def load_patient_dna_from_file(file_path: str) -> Dict[str, Tuple[str, str
                 allele1_val = row.get('allele1')
                 allele2_val = row.get('allele2')
 
-                if pd.isna(rsid_val) or pd.isna(allele1_val) or pd.isna(allele2_val):
-                    if skipped_rows_count < 5: # Log first few skips
-                        print(f"{Fore.YELLOW}Warning: Skipping row {index+2} due to missing rsID, allele1, or allele2. Data: rsid='{rsid_val}', allele1='{allele1_val}', allele2='{allele2_val}'{Style.RESET_ALL}")
+                if pd.isna(rsid_val):
+                    # Only skip if the RSID itself is missing - we need that for identification in all cases, or it becomes unreliable.
+                    if skipped_rows_count < 5:
+                        print(f"{Fore.YELLOW}Warning: Skipping row {index+2} due to missing rsID. Data: rsid='{rsid_val}'{Style.RESET_ALL}")
                     skipped_rows_count += 1
                     continue
                 
+                # Process the RSID even with missing alleles
                 rsid = str(rsid_val).strip().lower()
-                allele1 = str(allele1_val).strip().upper()
-                allele2 = str(allele2_val).strip().upper()
-                
-                if not rsid or rsid == 'nan' or not allele1 or not allele2 or allele1 == 'nan' or allele2 == 'nan': 
-                    if skipped_rows_count < 5: # Log first few skips
-                         print(f"{Fore.YELLOW}Warning: Skipping row {index+2} due to effectively missing rsID or alleles after processing. rsid='{rsid}', allele1='{allele1}', allele2='{allele2}'{Style.RESET_ALL}")
+                if not rsid or rsid == 'nan':
+                    if skipped_rows_count < 5:
+                        print(f"{Fore.YELLOW}Warning: Skipping row {index+2} due to invalid rsID after processing: '{rsid}'{Style.RESET_ALL}")
                     skipped_rows_count += 1
                     continue
-                
-                # Basic validation for alleles (can be expanded)
-                valid_alleles = "AGCTDI0-" # D for deletion, I for insertion, 0 or - for no-call/missing
-                if not all(a in valid_alleles for a in allele1) or not all(a in valid_alleles for a in allele2):
-                     if error_rows_count < 5:
-                         print(f"{Fore.YELLOW}Warning: Skipping row {index+2} due to invalid characters in alleles for rsID {rsid}. Alleles: ({allele1}, {allele2}){Style.RESET_ALL}")
-                     error_rows_count +=1
-                     continue
 
+                # Handle alleles, using placeholders for missing data
+                allele1 = "?" if pd.isna(allele1_val) else str(allele1_val).strip().upper()
+                allele2 = "?" if pd.isna(allele2_val) else str(allele2_val).strip().upper()
+
+                if pd.isna(allele1_val) or pd.isna(allele2_val):
+                    print(f"{Fore.BLUE}Info: Processing row {index+2} with incomplete allele data. RSID={rsid}, alleles={allele1}/{allele2}{Style.RESET_ALL}")
+
+                valid_alleles = "AGCTDI0-?" # valid allele values
+                if not all(a in valid_alleles for a in allele1) or not all(a in valid_alleles for a in allele2):
+                    if error_rows_count < 5:
+                        print(f"{Fore.YELLOW}Warning: Skipping row {index+2} due to invalid characters in alleles for rsID {rsid}. Alleles: ({allele1}, {allele2}){Style.RESET_ALL}")
+                    error_rows_count += 1
+                    continue
 
                 patient_genotypes[rsid] = (allele1, allele2)
             except Exception as e_row:
-                if error_rows_count < 5: # Log first few errors
+                if error_rows_count < 5: 
                     print(f"{Fore.RED}Error processing row {index+2} in patient DNA file: {e_row}. Row data: {row.to_dict()}{Style.RESET_ALL}")
                 error_rows_count += 1
                 continue 
@@ -204,20 +208,37 @@ async def assess_patient_genetic_risk_profile(
                 
                 effect_allele = None
                 allele_type = None # 'risk' or 'protective'
+                patient_has_effect_allele = False  # Initialize this variable
 
                 if 'risk_allele' in variant_info and variant_info['risk_allele']:
                     effect_allele = str(variant_info['risk_allele']).strip().upper()
                     allele_type = 'risk'
                     
+                    # Check for both direct match and complement allele match
+                    complement_map = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+                    comp_effect_allele = complement_map.get(effect_allele)
+                    
+                    if comp_effect_allele:
+                        # Check for both direct and complement match
+                        patient_has_effect_allele = (patient_allele1 == effect_allele or patient_allele2 == effect_allele or
+                                                   patient_allele1 == comp_effect_allele or patient_allele2 == comp_effect_allele)
                     else:
+                        # For non-standard alleles, just do direct match
                         patient_has_effect_allele = (patient_allele1 == effect_allele or patient_allele2 == effect_allele)
                     
                 elif 'protective_allele' in variant_info and variant_info['protective_allele']:
                     effect_allele = str(variant_info['protective_allele']).strip().upper()
                     allele_type = 'protective'
-                    patient_has_effect_allele = (patient_allele1 == effect_allele or patient_allele2 == effect_allele)
-                else:
-                    patient_has_effect_allele = False
+                    
+                    # Apply the same strand-aware matching to protective alleles
+                    complement_map = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+                    comp_effect_allele = complement_map.get(effect_allele)
+                    
+                    if comp_effect_allele:
+                        patient_has_effect_allele = (patient_allele1 == effect_allele or patient_allele2 == effect_allele or
+                                                   patient_allele1 == comp_effect_allele or patient_allele2 == comp_effect_allele)
+                    else:
+                        patient_has_effect_allele = (patient_allele1 == effect_allele or patient_allele2 == effect_allele)
                 
                 odds_ratio = variant_info.get('odds_ratio')
 
