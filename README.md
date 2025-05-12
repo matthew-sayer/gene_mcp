@@ -11,6 +11,9 @@ There is also a little extra which can generate DNA sequences - not something a 
 
 Sign up for an Nvidia account to get a free dev API key: https://build.nvidia.com/
 
+# **IMPORTANT - TO USE YOUR OWN DNA FOR ANALYSIS - READ THIS**
+You need to use your own DNA file AS A .CSV to have something to analyse, if you wish to use the DNA analysis tool. It should have these headers: rsid,chromosome,position,allele1,allele2. You can tell the tool the path to the file on your local machine for it to use it.
+
 ## Core Features & Toolset
 
 GeneMCP integrates several key tools to offer a robust platform for genetic exploration:

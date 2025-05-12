@@ -224,39 +224,40 @@ async def search_web_for_rsids_or_condition(
 
             params = {"key": GOOGLE_SEARCH_API_KEY, "cx": GOOGLE_CUSTOM_SEARCH_CX, "q": query}
             
-            current_retry_delay = initial_delay
-            for attempt in range(max_retries):
-                try:
-                    resp = await client.get("https://www.googleapis.com/customsearch/v1", params=params)
-                    
-                    if resp.status_code == 429: # Too Many Requests error
-                        if attempt == max_retries - 1: # Last attempt
-                            print(f"{Fore.RED}Rate limit hit (429) for {term}. Max retries reached. Giving up.{Style.RESET_ALL}")
-                            resp.raise_for_status() # Raise error to be caught below and carry on.
-                        
-                        print(f"{Fore.YELLOW}Rate limit hit (429) for {term}. Retrying in {current_retry_delay:.1f}s... (Attempt {attempt+1}/{max_retries}){Style.RESET_ALL}")
-                        await asyncio.sleep(current_retry_delay)
-                        current_retry_delay *= 2 
-                        continue # Retry the request.
-                    
-                    resp.raise_for_status() # Raise for other HTTP errors (4xx, 5xx) that may come up.
-                    search_results = resp.json()
-                    snippets = [item.get("snippet", "") for item in search_results.get("items", [])[:3]]
-                    web_info[term] = " ".join(filter(None, snippets)).strip() if snippets else f"No significant web results found for {term}."
-                    break # Success, exit retry loop
-                except httpx.HTTPStatusError as e:
-                    # For 429, this is hit if max_retries is reached and raise_for_status() is called.
-                    web_info[term] = f"Error searching web for {term} after {attempt+1} attempts: {str(e)}"
-                    print(f"{Fore.RED}HTTP Error searching for {term} (Status: {e.response.status_code}): {e}{Style.RESET_ALL}")
-                    break 
-                except Exception as e:
-                    web_info[term] = f"General error searching web for {term}: {str(e)}"
-                    print(f"{Fore.RED}General error searching for {term}: {e}{Style.RESET_ALL}")
-                    break 
+            try:
+                resp = await client.get("https://www.googleapis.com/customsearch/v1", params=params)
+                
+                if resp.status_code == 429:  # Rate limit hit - STOP EVERYTHING
+                    print(f"{Fore.RED}Rate limit hit (429). ABORTING ALL REMAINING SEARCHES.{Style.RESET_ALL}")
+                    # Add message for the current term and all remaining terms
+                    web_info[term] = "Search aborted due to rate limiting"
+                    remaining_terms = search_terms[i+1:]
+                    for remaining in remaining_terms:
+                        web_info[remaining] = "Search aborted due to rate limiting"
+                    break  # Exit the loop entirely
+                
+                resp.raise_for_status()  # Raise for other HTTP errors
+                search_results = resp.json()
+                snippets = [item.get("snippet", "") for item in search_results.get("items", [])[:3]]
+                web_info[term] = " ".join(filter(None, snippets)).strip() if snippets else f"No significant web results found for {term}."
+                
+            except httpx.HTTPStatusError as e:
+                web_info[term] = f"Error searching web for {term}: {str(e)}"
+                print(f"{Fore.RED}HTTP Error searching for {term} (Status: {e.response.status_code}): {e}{Style.RESET_ALL}")
+                # If it was a rate limit error that somehow got here, abort everything
+                if e.response.status_code == 429:
+                    print(f"{Fore.RED}Rate limit hit (429). ABORTING ALL REMAINING SEARCHES.{Style.RESET_ALL}")
+                    remaining_terms = search_terms[i+1:]
+                    for remaining in remaining_terms:
+                        web_info[remaining] = "Search aborted due to rate limiting"
+                    break
+            except Exception as e:
+                web_info[term] = f"General error searching web for {term}: {str(e)}"
+                print(f"{Fore.RED}General error searching for {term}: {e}{Style.RESET_ALL}")
             
-            # General delay between different search terms to prevent rate limiting.
+            # General delay between different search terms to prevent rate limiting
             if i < len(search_terms) - 1:
-                await asyncio.sleep(1.0) 
+                await asyncio.sleep(1.0)
     
     return web_info
 
@@ -292,8 +293,8 @@ def summarise_findings_core(condition: str, rsids: List[str], variant_details: D
         "web_research_summary": web_info,
     }
 
-async def llm_analyse_report(report_json_str: str) -> Optional[str]:
-    """Generate a summary of the report using the LLM"""
+async def llm_analyse_report(report_json_str: str, max_tokens: int = 30000) -> Optional[str]:
+    """Generate a summary of the report using the LLM with token limit handling"""
     if not NVIDIA_API_KEY:
         return "LLM summarisation skipped (NVIDIA_API_KEY not configured)."
     if not report_json_str:
@@ -301,27 +302,28 @@ async def llm_analyse_report(report_json_str: str) -> Optional[str]:
 
     print(f"{Fore.CYAN}Generating LLM summary with {Fore.YELLOW}{TARGET_LLM_MODEL}{Style.RESET_ALL}")
 
-    prompt = f"""Analyze the following genetic research report (in JSON format) about a medical condition.
+    # Create base prompt without the full report
+    base_prompt = """Analyze the following genetic research report (in JSON format) about a medical condition.
 
 Your task is to create a structured summary of the key findings. Format your response as JSON with the following structure:
-{{
+{
   "condition_summary": "Brief overview of the condition",
-  "genetic_findings": {{
+  "genetic_findings": {
     "overview": "General overview of the genetic associations found",
     "variants_by_significance": [
-      {{
+      {
         "rsid": "rsID",
         "risk_allele": "risk allele letter",
         "significance": "p-value",
         "effect_size": "odds ratio or beta value",
         "reported_gene": "associated gene",
         "biological_impact": "interpretation of the variant's role"
-      }}
+      }
     ]
-  }},
+  },
   "clinical_relevance": "How these findings might impact clinical understanding or treatment",
   "research_implications": "Suggestions for further research based on findings"
-}}
+}
 
 Focus especially on:
 - Identifying variants with strongest associations (lowest p-values)
@@ -329,15 +331,61 @@ Focus especially on:
 - Explaining the biological significance of mentioned genes
 - Drawing connections between multiple variants if patterns exist
 
-JSON Report:
-{report_json_str}
-
 Summary:
 """
+
+    # Start with full report
+    prompt = f"{base_prompt}\n\nJSON Report:\n{report_json_str}\n\n"
+    
+    # Try to send the full report first, this should work most of the time.
     try:
         result = await chat_with_model(message=prompt, model=TARGET_LLM_MODEL)
         return result
     except Exception as e:
+        error_str = str(e)
+        print(f"{Fore.YELLOW}Initial attempt failed: {error_str}. Attempting truncation.{Style.RESET_ALL}")
+        
+        # If we get a token limit error, truncate the report so we can retry.
+        if "maximum context length" in error_str or "too many tokens" in error_str:
+            try:
+                # Parse the report to intelligently truncate it
+                report_data = json.loads(report_json_str)
+                
+                # Prioritize important parts of the report
+                condition = report_data.get("condition_researched", "")
+                
+                # Keep only the top variants by significance (p-value)
+                variant_details = report_data.get("variant_details", {})
+                if variant_details:
+                    # Sort variants by p-value (ascending) and keep only top 15
+                    sorted_variants = sorted(
+                        variant_details.items(),
+                        key=lambda x: x[1].get('pvalue', 1.0) if x[1].get('pvalue') is not None else 1.0
+                    )
+                    top_variants = dict(sorted_variants[:15])
+                    report_data["variant_details"] = top_variants
+                
+                # Limit web research to top 10 entries
+                web_research = report_data.get("web_research_summary", {})
+                if len(web_research) > 10:
+                    top_web_research = dict(list(web_research.items())[:10])
+                    report_data["web_research_summary"] = top_web_research
+                
+                # Convert the truncated report back to JSON
+                truncated_report = json.dumps(report_data)
+                print(f"{Fore.GREEN}Report truncated to focus on top variants and research.{Style.RESET_ALL}")
+                
+                # Create new prompt with truncated report.
+                truncated_prompt = f"{base_prompt}\n\nJSON Report (truncated to focus on most significant findings):\n{truncated_report}\n\n"
+                
+                result = await chat_with_model(message=truncated_prompt, model=TARGET_LLM_MODEL)
+                return result
+            except json.JSONDecodeError:
+                print(f"{Fore.RED}Failed to parse report JSON for truncation.{Style.RESET_ALL}")
+            except Exception as truncate_error:
+                print(f"{Fore.RED}Error during truncation attempt: {truncate_error}{Style.RESET_ALL}")
+        
+        # Return error message if we couldn't handle it.
         print(f"{Fore.RED}Error during LLM summarisation: {e}{Style.RESET_ALL}")
         return f"LLM summarisation failed: {str(e)}"
 
@@ -408,7 +456,7 @@ async def deep_genetic_research(condition: str) -> dict:
     Research genetic associations for a medical condition using GWAS Catalog data.
     
     Args:
-        condition: The medical condition to research.
+        condition: The medical condition to research. Ensure it's MINIMAL and a valid term for the GWAS Catalog. Example names could be, but are not limited to: "cardiovascular disease", "diabetes", etc.
     Returns:
         A dictionary with research findings and LLM summary.
     """
