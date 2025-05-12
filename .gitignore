@@ -1,0 +1,43 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+.python-version
+
+# IDE files
+.vscode/
+!.vscode/mcp.json
+.idea/
+
+# Working folders
+resources/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.env
+.flaskenv*
+!.flaskenv.example
+
+# Logs
+logs/
+*.log
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+

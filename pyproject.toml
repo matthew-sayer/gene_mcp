@@ -1,0 +1,17 @@
+[project]
+name = "matt_nvidia_hackathon_mcp_server_genemcp"
+version = "0.1.0"
+description = "GeneMCP is an MCP server created for the Nvidia Hackathon."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.9.0",
+    "fastapi[standard]>=0.110.0",
+    "httpx>=0.27.0",
+    "langchain-openai>=0.3.14",
+    "langgraph>=0.4.1",
+    "mcp[cli]>=1.6.0",
+    "pandas>=2.2.3",
+    "python-dotenv",
+    "typing-extensions>=4.13.2",
+]
