@@ -5,7 +5,7 @@
 
 This project showcases a small suite of tools leveraging NVIDIA NIMs (NVIDIA Inference Microservices) and other APIs to perform comprehensive genetic research, analysis, and interaction, all orchestrated through the Model Context Protocol. 
 
-In layman's terms, this will let a doctor take someone's DNA file and check if they're vulnerable to developing certain conditions. You can then discuss in depth to figure out the person's vulnerabilities, and what they should do - how to prepare and what medical to take or avoid based on their genetic profile. The possibilities are not limited. You can use the chat tool to directly invoke the Palmyra model, or the Nemotron/Deepseek models - I recommend using Palmyra as that has has been specially trained for medical use.
+In layman's terms, this will let a doctor take someone's DNA file and check if they're vulnerable to developing certain conditions. You can then discuss in depth to figure out the person's vulnerabilities, and what they should do - how to prepare and what medication to take or avoid based on their genetic profile. The possibilities are not limited. You can use the chat tool to directly invoke the Palmyra model, or the Nemotron/Deepseek models - I recommend using Palmyra as that has has been specially trained for medical use.
 
 There is also a little extra which can generate DNA sequences - not something a doctor should do, but an example of the power of the Nvidia NIM toolset.
 
