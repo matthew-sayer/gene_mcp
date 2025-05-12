@@ -12,7 +12,9 @@ There is also a little extra which can generate DNA sequences - not something a 
 Sign up for an Nvidia account to get a free dev API key: https://build.nvidia.com/
 
 # **IMPORTANT - TO USE YOUR OWN DNA FOR ANALYSIS - READ THIS**
-You need to use your own DNA file AS A .CSV to have something to analyse, if you wish to use the DNA analysis tool. It should have these headers: rsid,chromosome,position,allele1,allele2. You can tell the tool the path to the file on your local machine for it to use it.
+You can to use your own DNA file AS A .CSV to have something to analyse, if you wish to use the DNA analysis tool. It should have these headers: rsid,chromosome,position,allele1,allele2. You can tell the tool the path to the file on your local machine for it to use it. If you've already had a DNA test with Ancestry DNA you should have one.
+
+**OR you can use the file under dna_sample which I have random generated, for an example to try out.**
 
 ## Core Features & Toolset
 
