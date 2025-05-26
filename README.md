@@ -63,7 +63,7 @@ GeneMCP harnesses the power of NVIDIA NIMs to deliver specialised AI capabilitie
 *   **Comprehensive Genetic Analyses**: Offers an integrated workflow from broad genetic research to personalised DNA risk assessment.
 *   **AI-Driven Insights**: Employs state-of-the-art NVIDIA NIMs to provide deeper, more nuanced insights than traditional analysis methods alone. Palmyra-70b offers expert-level summarisation of medical texts, while    Evo2-40B allows for novel biological sequence generation.
 *   **Automated & Streamlined Research**: Significantly reduces the manual effort involved in gathering, processing, and interpreting genetic data from sources like the GWAS Catalogue and web searches.
-*   **Facilitating Personalised Medicine**: By analysing individual DNA (e.g., [Nvidia_Demo_MCP_Server/resources/mattDNA.csv](Nvidia_Demo_MCP_Server/resources/mattDNA.csv)) for risk factors, GeneMCP supports the move towards more personalised healthcare strategies.
+*   **Facilitating Personalised Medicine**: By analysing individual DNA (e.g. with the sample DNA in the repo) for risk factors, GeneMCP supports the move towards more personalised healthcare strategies.
 *   **Accelerating Research & Development**: Provides researchers with tools to quickly investigate genetic links, generate synthetic DNA for experiments, and discuss findings with an AI expert.
 
 ## Running locally
