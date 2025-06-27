@@ -1,9 +1,8 @@
-# GeneMCP: NVIDIA AgentIQ Hackathon Submission - Matthew Sayer
-![GeneMCP](./assets/GeneMCP.png)
+# GeneMCP - Genetics Analysis MCP Server
 
 **GeneMCP is a Model Context Protocol (MCP) server developed as a submission for the [NVIDIA AgentIQ Hackathon](https://developer.nvidia.com/agentiq-hackathon).**
 
-This project showcases a small suite of tools leveraging NVIDIA NIMs (NVIDIA Inference Microservices) and other APIs to perform comprehensive genetic research, analysis, and interaction, all orchestrated through the Model Context Protocol. 
+This project showcases a small suite of tools to perform comprehensive genetic research, analysis, and interaction, all orchestrated through the Model Context Protocol. 
 
 In layman's terms, this will let a doctor take someone's DNA file and check if they're vulnerable to developing certain conditions. You can then discuss in depth to figure out the person's vulnerabilities, and what they should do - how to prepare and what medication to take or avoid based on their genetic profile. The possibilities are not limited. You can use the chat tool to directly invoke the Palmyra model, or the Nemotron/Deepseek models - I recommend using Palmyra as that has has been specially trained for medical use.
 
@@ -41,8 +40,6 @@ GeneMCP integrates several key tools to offer a robust platform for genetic expl
     *   Can be used for discussing research findings, asking follow-up questions, or general medical/genetic enquiries, with the ability to specify models like Palmyra-70b for domain-specific expertise.
 
 ## NVIDIA NIM Integration
-
-GeneMCP harnesses the power of NVIDIA NIMs to deliver specialised AI capabilities:
 
 *   **Palmyra-70b**:
     *   **Why it's used**: This large language model, with 70 billion parameters, is part of the NVIDIA NIM collection and is specialised for the medical domain. Its training on extensive medical literature makes it exceptionally proficient at understanding, interpreting, and summarising complex biomedical and genetic information.
